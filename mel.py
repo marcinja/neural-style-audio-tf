@@ -125,11 +125,11 @@ with tf.Graph().as_default(), tf.Session() as sess:
     #mel_x = mel_spec(x)
     #mel_x = np.ascontiguousarray(mel_x.T[None,None,:,:])
 
-    x = tf.placeholder('float32', [1,1,N_SAMPLES_MEL,N_CHANNELS_MEL], name="x")
+    y = tf.placeholder('float32', [1,1,N_SAMPLES_MEL,N_CHANNELS_MEL], name="x")
     # now do mel net
     kernel_tf_mel = tf.constant(kernel_mel, name="kernel_mel", dtype='float32')
     conv_mel = tf.nn.conv2d(
-        x,
+        y,
         kernel_tf_mel,
         strides=[1, 1, 1, 1],
         padding="VALID",
@@ -137,9 +137,9 @@ with tf.Graph().as_default(), tf.Session() as sess:
 
     # TODO add residual connections
     mel_net = tf.nn.selu(conv_mel)
-    mel_content_features = mel_net.eval(feed_dict={x: mel_content_tf})
+    mel_content_features = mel_net.eval(feed_dict={y: mel_content_tf})
  
-    mel_style_features = mel_net.eval(feed_dict={x: mel_style_tf})
+    mel_style_features = mel_net.eval(feed_dict={y: mel_style_tf})
     mel_features = np.reshape(mel_style_features, (-1, N_FILTERS_MEL))
     mel_style_gram = np.matmul(mel_features.T, mel_features) / N_SAMPLES_MEL
 
@@ -225,7 +225,7 @@ with tf.Graph().as_default():
     loss = content_loss + mel_content_loss + style_loss + style_loss_mel
 
     opt = tf.contrib.opt.ScipyOptimizerInterface(
-          loss, method='L-BFGS-B', options={'maxiter': 500})
+          loss, method='L-BFGS-B', options={'maxiter': 300})
         
     # Optimization
     with tf.Session() as sess:
