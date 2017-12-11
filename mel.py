@@ -259,13 +259,13 @@ for i in range(500):
     x = librosa.istft(S)
     p = np.angle(librosa.stft(x, N_FFT))
 
+OUTPUT_FILENAME = sys.argv[1]# 'outputs/out.wav'
 librosa.output.write_wav(OUTPUT_FILENAME, x, fs)
 
 
 # In[ ]:
 
 
-OUTPUT_FILENAME = sys.argv[1]# 'outputs/out.wav'
 ## print OUTPUT_FILENAME
 
 
