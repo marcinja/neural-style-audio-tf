@@ -115,21 +115,24 @@ with g.as_default(), g.device('/cpu:0'), tf.Session() as sess:
     features = np.reshape(style_features, (-1, N_FILTERS))
     style_gram = np.matmul(features.T, features) / N_SAMPLES
 
+    # Convert x to mel spectrogram
+    # Warp the linear-scale, magnitude spectrograms into the mel-scale.
+    sample_rate = 22050 # from librosa docs
+    num_spectrogram_bins = x.shape[-1].value
+    lower_edge_hertz, upper_edge_hertz = 80.0, 7600.0
+    linear_to_mel_weight_matrix = tf.contrib.signal.linear_to_mel_weight_matrix(
+        N_CHANNELS_MEL, N_CHANNELS, sample_rate, lower_edge_hertz,
+    upper_edge_hertz)
+    mel_spectrograms = tf.tensordot(
+        x, linear_to_mel_weight_matrix, 1)
+    # Note: Shape inference for `tf.tensordot` does not currently handle this case.
+    mel_spectrograms.set_shape(x.shape[:-1].concatenate(
+        linear_to_mel_weight_matrix.shape[-1:]))
 
-
-with tf.Graph().as_default(), tf.Session() as sess:
-    # convert back to 2d array
-    #x_eval = x.eval()
-    #print x_eval
-    #x_as_np = np.squeeze(x_eval)
-    #mel_x = mel_spec(x)
-    #mel_x = np.ascontiguousarray(mel_x.T[None,None,:,:])
-
-    y = tf.placeholder('float32', [1,1,N_SAMPLES_MEL,N_CHANNELS_MEL], name="x")
     # now do mel net
     kernel_tf_mel = tf.constant(kernel_mel, name="kernel_mel", dtype='float32')
     conv_mel = tf.nn.conv2d(
-        y,
+        mel_spectrograms,
         kernel_tf_mel,
         strides=[1, 1, 1, 1],
         padding="VALID",
@@ -143,14 +146,17 @@ with tf.Graph().as_default(), tf.Session() as sess:
     mel_features = np.reshape(mel_style_features, (-1, N_FILTERS_MEL))
     mel_style_gram = np.matmul(mel_features.T, mel_features) / N_SAMPLES_MEL
 
+
 # ### Optimize
 
 # In[ ]:
 
 
 from sys import stderr
+import sys
 
 ALPHA= 1e-2
+BETA= 1e-2
 learning_rate= 1e-3
 iterations = 100
 
@@ -203,7 +209,7 @@ with tf.Graph().as_default():
     content_loss = ALPHA * 2 * tf.nn.l2_loss(
             net - content_features)
 
-    mel_content_loss = ALPHA * 2 * tf.nn.l2_loss(
+    mel_content_loss = BETA * 2 * tf.nn.l2_loss(
             mel_net - mel_content_features)
 
     style_loss = 0
@@ -253,38 +259,35 @@ for i in range(500):
     x = librosa.istft(S)
     p = np.angle(librosa.stft(x, N_FFT))
 
-OUTPUT_FILENAME = 'outputs/out.wav'
 librosa.output.write_wav(OUTPUT_FILENAME, x, fs)
 
 
 # In[ ]:
 
 
+OUTPUT_FILENAME = sys.argv[1]# 'outputs/out.wav'
 ## print OUTPUT_FILENAME
-display(Audio(OUTPUT_FILENAME))
 
 
 # ### Visualize spectrograms
 
 # In[ ]:
 
-
-plt.figure(figsize=(15,5))
-plt.subplot(1,3,1)
-plt.title('Content')
-plt.imshow(a_content[:400,:])
-plt.subplot(1,3,2)
-plt.title('Style')
-plt.imshow(a_style[:400,:])
-plt.subplot(1,3,3)
-plt.title('Result')
-plt.imshow(a[:400,:])
-plt.show()
-
-
-# In[ ]:
+if len(sys.argv) > 2:
+    plt.figure(figsize=(15,5))
+    plt.subplot(1,3,1)
+    plt.title('Content')
+    plt.imshow(a_content[:400,:])
+    plt.subplot(1,3,2)
+    plt.title('Style')
+    plt.imshow(a_style[:400,:])
+    plt.subplot(1,3,3)
+    plt.title('Result')
+    plt.imshow(a[:400,:])
+    plt.show()
 
 
-plt.show()
+
+
 
 
