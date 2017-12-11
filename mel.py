@@ -17,8 +17,8 @@ import matplotlib.pyplot as plt
 # In[4]:
 
 
-CONTENT_FILENAME = "inputs/imperial.mp3"
-STYLE_FILENAME = "inputs/nwa.mp3"
+CONTENT_FILENAME = "inputs/spongebob.mp3"
+STYLE_FILENAME = "inputs/imperial.mp3"
 
 
 # In[5]:
@@ -109,7 +109,7 @@ with g.as_default(), g.device('/cpu:0'), tf.Session() as sess:
         padding="VALID",
         name="conv")
 
-    net = tf.nn.relu(conv)
+    net = tf.nn.selu(conv)
     content_features = net.eval(feed_dict={x: a_content_tf})
     style_features = net.eval(feed_dict={x: a_style_tf})
     features = np.reshape(style_features, (-1, N_FILTERS))
@@ -136,7 +136,7 @@ with tf.Graph().as_default(), tf.Session() as sess:
         name="conv_mel")
 
     # TODO add residual connections
-    mel_net = tf.nn.relu(conv_mel)
+    mel_net = tf.nn.selu(conv_mel)
 
     mel_style_features = mel_net.eval(feed_dict={x: mel_style_tf})
     mel_features = np.reshape(mel_style_features, (-1, N_FILTERS_MEL))
@@ -183,7 +183,7 @@ with tf.Graph().as_default():
         name="conv")
     
     
-    net = tf.nn.relu(conv)
+    net = tf.nn.selu(conv)
 
 
     # now do mel net
@@ -196,7 +196,7 @@ with tf.Graph().as_default():
         name="conv_mel")
 
     # TODO add residual connections
-    mel_net = tf.nn.relu(conv_mel)
+    mel_net = tf.nn.selu(conv_mel)
 
 
     content_loss = ALPHA * 2 * tf.nn.l2_loss(
@@ -221,7 +221,7 @@ with tf.Graph().as_default():
     loss = content_loss + style_loss + style_loss_mel
 
     opt = tf.contrib.opt.ScipyOptimizerInterface(
-          loss, method='L-BFGS-B', options={'maxiter': 300})
+          loss, method='L-BFGS-B', options={'maxiter': 500})
         
     # Optimization
     with tf.Session() as sess:
