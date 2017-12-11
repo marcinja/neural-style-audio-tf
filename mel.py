@@ -140,9 +140,9 @@ with g.as_default(), g.device('/cpu:0'), tf.Session() as sess:
 
     # TODO add residual connections
     mel_net = tf.nn.selu(conv_mel)
-    mel_content_features = mel_net.eval(feed_dict={y: mel_content_tf})
+    mel_content_features = mel_net.eval(feed_dict={x: a_content_tf})
  
-    mel_style_features = mel_net.eval(feed_dict={y: mel_style_tf})
+    mel_style_features = mel_net.eval(feed_dict={x: a_style_tf})
     mel_features = np.reshape(mel_style_features, (-1, N_FILTERS_MEL))
     mel_style_gram = np.matmul(mel_features.T, mel_features) / N_SAMPLES_MEL
 
