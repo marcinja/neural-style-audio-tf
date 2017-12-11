@@ -137,7 +137,8 @@ with tf.Graph().as_default(), tf.Session() as sess:
 
     # TODO add residual connections
     mel_net = tf.nn.selu(conv_mel)
-
+    mel_content_features = mel_net.eval(feed_dict={x: mel_content_tf})
+ 
     mel_style_features = mel_net.eval(feed_dict={x: mel_style_tf})
     mel_features = np.reshape(mel_style_features, (-1, N_FILTERS_MEL))
     mel_style_gram = np.matmul(mel_features.T, mel_features) / N_SAMPLES_MEL
@@ -202,6 +203,9 @@ with tf.Graph().as_default():
     content_loss = ALPHA * 2 * tf.nn.l2_loss(
             net - content_features)
 
+    mel_content_loss = ALPHA * 2 * tf.nn.l2_loss(
+            mel_net - mel_content_features)
+
     style_loss = 0
 
     _, height, width, number = map(lambda i: i.value, net.get_shape())
@@ -218,7 +222,7 @@ with tf.Graph().as_default():
     style_loss_mel = 2 * tf.nn.l2_loss(gram_mel - mel_style_gram)
 
    # Overall loss
-    loss = content_loss + style_loss + style_loss_mel
+    loss = content_loss + mel_content_loss + style_loss + style_loss_mel
 
     opt = tf.contrib.opt.ScipyOptimizerInterface(
           loss, method='L-BFGS-B', options={'maxiter': 500})
