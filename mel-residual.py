@@ -88,6 +88,7 @@ a_style_tf = np.ascontiguousarray(a_style.T[None,None,:,:])
 mel_content_tf = np.ascontiguousarray(mel_content.T[None,None,:,:])
 mel_style_tf = np.ascontiguousarray(mel_style.T[None,None,:,:])
 
+# Set up filter dimensions:
 # filter shape is "[filter_height, filter_width, in_channels, out_channels]"
 std = np.sqrt(2) * np.sqrt(2.0 / ((N_CHANNELS + N_FILTERS) * 11))
 kernel = np.random.randn(1, FILTER_WIDTH, N_CHANNELS, N_FILTERS)*std
@@ -95,11 +96,11 @@ kernel = np.random.randn(1, FILTER_WIDTH, N_CHANNELS, N_FILTERS)*std
 std_mel = np.sqrt(2) * np.sqrt(2.0 / ((N_CHANNELS_MEL + N_FILTERS_MEL) * 11))
 kernel_mel = np.random.randn(1, MEL_FILTER_WIDTH, N_CHANNELS_MEL, N_FILTERS_MEL)*std
 
-#kernel_mel_conv1 = np.random.randn(1, 192, 191, N_FILTERS_MEL)*std
-kernel_mel_conv1 = np.random.randn(192, 191, N_FILTERS_MEL, N_CHANNELS_MEL)*std
+kernel_mel_conv1 = np.random.randn(1, 1, N_FILTERS_MEL, 381)*std
+kernel_mel_conv2 = np.random.randn(1, 1, 381, 381)*std
 # Filters for dilated convolution taken to be smaller.
 kernel_mel_dil1 = np.random.randn(1, MEL_FILTER_WIDTH / 2, N_FILTERS_MEL, N_FILTERS_MEL)*std
-kernel_mel_dil2 = np.random.randn(1, MEL_FILTER_WIDTH / 2, N_FILTERS_MEL, N_FILTERS_MEL)*std
+kernel_mel_dil2 = np.random.randn(1, MEL_FILTER_WIDTH / 2, 381, 381)*std
 
 g = tf.Graph()
 with g.as_default(), g.device('/cpu:0'), tf.Session() as sess:
@@ -139,7 +140,8 @@ with g.as_default(), g.device('/cpu:0'), tf.Session() as sess:
     kernel_tf_mel = tf.constant(kernel_mel, name="kernel_mel", dtype='float32')
     kernel_tf_dil1 = tf.constant(kernel_mel_dil1, name="kernel_mel_dil1", dtype='float32')
     kernel_tf_dil2 = tf.constant(kernel_mel_dil2, name="kernel_mel_dil2", dtype='float32')
-    kernel_tf_conv1 = tf.constant(kernel_mel_conv1, name="kernel_mel_conv12", dtype='float32')
+    kernel_tf_conv1 = tf.constant(kernel_mel_conv1, name="kernel_mel_conv1", dtype='float32')
+    kernel_tf_conv2 = tf.constant(kernel_mel_conv2, name="kernel_mel_conv2", dtype='float32')
     conv_mel = tf.nn.conv2d(
         mel_spectrograms,
         kernel_tf_mel,
@@ -165,10 +167,10 @@ with g.as_default(), g.device('/cpu:0'), tf.Session() as sess:
     second_res_shortcut = tf.nn.selu(std_conv1) 
     dilated_conv2 = tf.nn.atrous_conv2d(second_res_shortcut, kernel_tf_dil2, DILATION_RATE, padding="SAME", name="dilated_conv2")
     activated_dil2 = tf.nn.selu(dilated_conv2)
-    add_residual2 = tf.add(first_res_shortcut, activated_dil2)
+    add_residual2 = tf.add(second_res_shortcut, activated_dil2)
     std_conv2 = tf.nn.conv2d(
         add_residual2,
-        kernel_tf_mel,
+        kernel_tf_conv2,
         strides=[1, 1, 1, 1],
         padding="VALID",
         name="std_conv2")
@@ -177,7 +179,7 @@ with g.as_default(), g.device('/cpu:0'), tf.Session() as sess:
     mel_content_features = mel_net.eval(feed_dict={x: a_content_tf})
  
     mel_style_features = mel_net.eval(feed_dict={x: a_style_tf})
-    mel_features = np.reshape(mel_style_features, (-1, N_FILTERS_MEL))
+    mel_features = np.squeeze(mel_style_features) #np.reshape(mel_style_features, (-1, N_FILTERS_MEL))
     mel_style_gram = np.matmul(mel_features.T, mel_features) / N_SAMPLES_MEL
 
 
@@ -226,11 +228,12 @@ with tf.Graph().as_default():
     
     net = tf.nn.selu(conv)
 
-
     # now do mel net
     kernel_tf_mel = tf.constant(kernel_mel, name="kernel_mel", dtype='float32')
     kernel_tf_dil1 = tf.constant(kernel_mel_dil1, name="kernel_mel_dil1", dtype='float32')
     kernel_tf_dil2 = tf.constant(kernel_mel_dil2, name="kernel_mel_dil2", dtype='float32')
+    kernel_tf_conv1 = tf.constant(kernel_mel_conv1, name="kernel_mel_conv1", dtype='float32')
+    kernel_tf_conv2 = tf.constant(kernel_mel_conv2, name="kernel_mel_conv2", dtype='float32')
     conv_mel = tf.nn.conv2d(
         mel_spectrograms,
         kernel_tf_mel,
@@ -242,7 +245,7 @@ with tf.Graph().as_default():
     DILATION_RATE = 2
 
     first_res_shortcut = tf.nn.selu(conv_mel) 
-    dilated_conv1 = tf.nn.atrous_conv2d(first_res_shortcut, kernel_tf_mel, DILATION_RATE, padding="SAME", name="dilated_conv1")
+    dilated_conv1 = tf.nn.atrous_conv2d(first_res_shortcut, kernel_tf_dil1, DILATION_RATE, padding="SAME", name="dilated_conv1")
     activated_dil1 = tf.nn.selu(dilated_conv1)
     add_residual = tf.add(first_res_shortcut, activated_dil1)
     std_conv1 = tf.nn.conv2d(
@@ -254,18 +257,17 @@ with tf.Graph().as_default():
 
     # Second residual block for mel net
     second_res_shortcut = tf.nn.selu(std_conv1) 
-    dilated_conv2 = tf.nn.atrous_conv2d(second_res_shortcut, kernel_tf_mel, DILATION_RATE, padding="SAME", name="dilated_conv2")
+    dilated_conv2 = tf.nn.atrous_conv2d(second_res_shortcut, kernel_tf_dil2, DILATION_RATE, padding="SAME", name="dilated_conv2")
     activated_dil2 = tf.nn.selu(dilated_conv2)
-    add_residual2 = tf.add(first_res_shortcut, activated_dil2)
+    add_residual2 = tf.add(second_res_shortcut, activated_dil2)
     std_conv2 = tf.nn.conv2d(
         add_residual2,
-        kernel_tf_dil2,
+        kernel_tf_conv2,
         strides=[1, 1, 1, 1],
         padding="VALID",
         name="std_conv2")
 
     mel_net = tf.nn.selu(std_conv2)
- 
 
     content_loss = ALPHA * 2 * tf.nn.l2_loss(
             net - content_features)
