@@ -100,12 +100,6 @@ g = tf.Graph()
 with g.as_default(), g.device('/cpu:0'), tf.Session() as sess:
     # data shape is "[batch, in_height, in_width, in_channels]",
     x = tf.placeholder('float32', [1,1,N_SAMPLES,N_CHANNELS], name="x")
-
-    # convert back to 2d array
-    x_as_np = np.squeeze(x)
-    mel_x = mel_spec(x)
-    mel_x = np.ascontiguousarray(mel_x.T[None,None,:,:])
-
     # STFT Net
     kernel_tf = tf.constant(kernel, name="kernel", dtype='float32')
     conv = tf.nn.conv2d(
@@ -116,26 +110,37 @@ with g.as_default(), g.device('/cpu:0'), tf.Session() as sess:
         name="conv")
 
     net = tf.nn.relu(conv)
+    content_features = net.eval(feed_dict={x: a_content_tf})
+    style_features = net.eval(feed_dict={x: a_style_tf})
+    features = np.reshape(style_features, (-1, N_FILTERS))
+    style_gram = np.matmul(features.T, features) / N_SAMPLES
 
+
+
+with tf.Graph().as_default(), tf.Session() as sess:
+    # convert back to 2d array
+    #x_eval = x.eval()
+    #print x_eval
+    #x_as_np = np.squeeze(x_eval)
+    #mel_x = mel_spec(x)
+    #mel_x = np.ascontiguousarray(mel_x.T[None,None,:,:])
+
+    x = tf.placeholder('float32', [1,1,N_SAMPLES_MEL,N_CHANNELS_MEL], name="x")
     # now do mel net
     kernel_tf_mel = tf.constant(kernel_mel, name="kernel_mel", dtype='float32')
     conv_mel = tf.nn.conv2d(
-        mel_x,
+        x,
         kernel_tf_mel,
         strides=[1, 1, 1, 1],
         padding="VALID",
         name="conv_mel")
 
+    # TODO add residual connections
     mel_net = tf.nn.relu(conv_mel)
 
-
-
-    content_features = net.eval(feed_dict={x: a_content_tf})
-    style_features = net.eval(feed_dict={x: a_style_tf})
-    
-    features = np.reshape(style_features, (-1, N_FILTERS))
-    style_gram = np.matmul(features.T, features) / N_SAMPLES
-
+    mel_style_features = mel_net.eval(feed_dict={x: mel_style_tf})
+    mel_features = np.reshape(mel_style_features, (-1, N_FILTERS_MEL))
+    mel_style_gram = np.matmul(mel_features.T, mel_features) / N_SAMPLES_MEL
 
 # ### Optimize
 
@@ -152,8 +157,22 @@ result = None
 with tf.Graph().as_default():
 
     # Build graph with variable input
-#     x = tf.Variable(np.zeros([1,1,N_SAMPLES,N_CHANNELS], dtype=np.float32), name="x")
     x = tf.Variable(np.random.randn(1,1,N_SAMPLES,N_CHANNELS).astype(np.float32)*1e-3, name="x")
+
+    # Convert x to mel spectrogram
+    # Warp the linear-scale, magnitude spectrograms into the mel-scale.
+    sample_rate = 22050 # from librosa docs
+    num_spectrogram_bins = x.shape[-1].value
+    lower_edge_hertz, upper_edge_hertz = 80.0, 7600.0
+    linear_to_mel_weight_matrix = tf.contrib.signal.linear_to_mel_weight_matrix(
+        N_CHANNELS_MEL, N_CHANNELS, sample_rate, lower_edge_hertz,
+    upper_edge_hertz)
+    mel_spectrograms = tf.tensordot(
+        x, linear_to_mel_weight_matrix, 1)
+    # Note: Shape inference for `tf.tensordot` does not currently handle this case.
+    mel_spectrograms.set_shape(x.shape[:-1].concatenate(
+        linear_to_mel_weight_matrix.shape[-1:]))
+
 
     kernel_tf = tf.constant(kernel, name="kernel", dtype='float32')
     conv = tf.nn.conv2d(
@@ -166,27 +185,47 @@ with tf.Graph().as_default():
     
     net = tf.nn.relu(conv)
 
+
+    # now do mel net
+    kernel_tf_mel = tf.constant(kernel_mel, name="kernel_mel", dtype='float32')
+    conv_mel = tf.nn.conv2d(
+        mel_spectrograms,
+        kernel_tf_mel,
+        strides=[1, 1, 1, 1],
+        padding="VALID",
+        name="conv_mel")
+
+    # TODO add residual connections
+    mel_net = tf.nn.relu(conv_mel)
+
+
     content_loss = ALPHA * 2 * tf.nn.l2_loss(
             net - content_features)
 
     style_loss = 0
 
     _, height, width, number = map(lambda i: i.value, net.get_shape())
+    _, height_mel, width_mel, number_mel = map(lambda i: i.value, mel_net.get_shape())
 
     size = height * width * number
     feats = tf.reshape(net, (-1, number))
     gram = tf.matmul(tf.transpose(feats), feats)  / N_SAMPLES
     style_loss = 2 * tf.nn.l2_loss(gram - style_gram)
 
-     # Overall loss
-    loss = content_loss + style_loss
+    size_mel = height_mel * width_mel * number_mel
+    feats_mel = tf.reshape(mel_net, (-1, number_mel))
+    gram_mel = tf.matmul(tf.transpose(feats_mel), feats_mel)  / N_SAMPLES_MEL
+    style_loss_mel = 2 * tf.nn.l2_loss(gram_mel - mel_style_gram)
+
+   # Overall loss
+    loss = content_loss + style_loss + style_loss_mel
 
     opt = tf.contrib.opt.ScipyOptimizerInterface(
           loss, method='L-BFGS-B', options={'maxiter': 300})
         
     # Optimization
     with tf.Session() as sess:
-        sess.run(tf.initialize_all_variables())
+        sess.run(tf.global_variables_initializer())
        
         print('Started optimization.')
         opt.minimize(sess)
