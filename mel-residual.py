@@ -17,8 +17,8 @@ import matplotlib.pyplot as plt
 # In[4]:
 
 
-CONTENT_FILENAME = "inputs/usa.mp3"
-STYLE_FILENAME = "inputs/valkyries.mp3"
+CONTENT_FILENAME = sys.argv[1]# "inputs/usa.mp3"
+STYLE_FILENAME = sys.argv[2] #"inputs/valkyries.mp3"
 
 
 # In[5]:
@@ -330,7 +330,7 @@ for i in range(500):
     x = librosa.istft(S)
     p = np.angle(librosa.stft(x, N_FFT))
 
-OUTPUT_FILENAME = sys.argv[1]# 'outputs/out.wav'
+OUTPUT_FILENAME = sys.argv[3]# 'outputs/out.wav'
 librosa.output.write_wav(OUTPUT_FILENAME, x, fs)
 
 
