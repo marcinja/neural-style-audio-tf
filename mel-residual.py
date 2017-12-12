@@ -81,6 +81,7 @@ N_FILTERS_MEL = 1025
 
 FILTER_WIDTH = 11
 MEL_FILTER_WIDTH = 50
+MEL_RES_WIDTH = MEL_FILTER_WIDTH / 2
 
 a_content_tf = np.ascontiguousarray(a_content.T[None,None,:,:])
 a_style_tf = np.ascontiguousarray(a_style.T[None,None,:,:])
@@ -90,25 +91,26 @@ mel_style_tf = np.ascontiguousarray(mel_style.T[None,None,:,:])
 
 # Set up filter dimensions:
 # filter shape is "[filter_height, filter_width, in_channels, out_channels]"
-std = 1#np.sqrt(2) * np.sqrt(2.0 / ((N_CHANNELS + N_FILTERS) * 11))
+std = np.sqrt(2) * np.sqrt(2.0 / ((N_CHANNELS + N_FILTERS) * FILTER_WIDTH))
 kernel = np.random.randn(1, FILTER_WIDTH, N_CHANNELS, N_FILTERS)*std
 
-std_mel = np.sqrt(2) * np.sqrt(2.0 / ((N_CHANNELS_MEL + (N_FILTERS_MEL) * 50)))
-kernel_mel = np.random.randn(1, MEL_FILTER_WIDTH, N_CHANNELS_MEL, N_FILTERS_MEL)*std
+std_mel = np.sqrt(2) * np.sqrt(2.0 / ((N_CHANNELS_MEL + N_FILTERS_MEL) * MEL_FILTER_WIDTH))
+kernel_mel = np.random.randn(1, MEL_FILTER_WIDTH, N_CHANNELS_MEL, N_FILTERS_MEL)*std_mel
 
 
 std_conv1 = np.sqrt(2) * np.sqrt(2.0 / ((N_FILTERS_MEL + 381)))
-kernel_mel_conv1 = np.random.randn(1, 1, N_FILTERS_MEL, 381)*std
+kernel_mel_conv1 = np.random.randn(1, 1, N_FILTERS_MEL, 381)*std_conv1
 
 std_conv2 = np.sqrt(2) * np.sqrt(2.0 / ((381 + 381)))
-kernel_mel_conv2 = np.random.randn(1, 1, 381, 381)*std
+kernel_mel_conv2 = np.random.randn(1, 1, 381, 381)*std_conv2
 
 # Filters for dilated convolution taken to be smaller.
-std_dil1 = np.sqrt(2) * np.sqrt(2.0 / ((N_CHANNELS_MEL + N_FILTERS_MEL) * MEL_FILTER_WIDTH/2))
-kernel_mel_dil1 = np.random.randn(1, MEL_FILTER_WIDTH / 2, N_FILTERS_MEL, N_FILTERS_MEL)*std
+#std_dil1 = np.sqrt(2) * np.sqrt(2.0 / ((N_CHANNELS_MEL + N_FILTERS_MEL) * MEL_FILTER_WIDTH/2))
+std_dil1 = np.sqrt(2) * np.sqrt(2.0 / ((N_CHANNELS_MEL + N_CHANNELS) * MEL_RES_WIDTH))
+kernel_mel_dil1 = np.random.randn(1, MEL_RES_WIDTH, N_FILTERS_MEL, N_FILTERS_MEL)*std_dil1
 
-std_dil2 = np.sqrt(2) * np.sqrt(2.0 / ((381 + 381) * MEL_FILTER_WIDTH/2))
-kernel_mel_dil2 = np.random.randn(1, MEL_FILTER_WIDTH / 2, 381, 381)*std
+std_dil2 = np.sqrt(2) * np.sqrt(2.0 / ((381 + 381) * MEL_RES_WIDTH))
+kernel_mel_dil2 = np.random.randn(1, MEL_FILTER_WIDTH / 2, 381, 381)*std_dil2
 
 g = tf.Graph()
 with g.as_default(), g.device('/cpu:0'), tf.Session() as sess:
@@ -164,26 +166,26 @@ with g.as_default(), g.device('/cpu:0'), tf.Session() as sess:
     dilated_conv1 = tf.nn.atrous_conv2d(first_res_shortcut, kernel_tf_dil1, DILATION_RATE, padding="SAME", name="dilated_conv1")
     activated_dil1 = tf.nn.selu(dilated_conv1)
     add_residual = tf.add(first_res_shortcut, activated_dil1)
-    std_conv1 = tf.nn.conv2d(
+    conv1 = tf.nn.conv2d(
         add_residual,
         kernel_tf_conv1,
         strides=[1, 1, 1, 1],
         padding="VALID",
-        name="std_conv1")
+        name="conv1")
 
     # Second residual block for mel net
-    second_res_shortcut = tf.nn.selu(std_conv1) 
+    second_res_shortcut = tf.nn.selu(conv1) 
     dilated_conv2 = tf.nn.atrous_conv2d(second_res_shortcut, kernel_tf_dil2, DILATION_RATE, padding="SAME", name="dilated_conv2")
     activated_dil2 = tf.nn.selu(dilated_conv2)
     add_residual2 = tf.add(second_res_shortcut, activated_dil2)
-    std_conv2 = tf.nn.conv2d(
+    conv2 = tf.nn.conv2d(
         add_residual2,
         kernel_tf_conv2,
         strides=[1, 1, 1, 1],
         padding="VALID",
-        name="std_conv2")
+        name="conv2")
 
-    mel_net = tf.nn.selu(std_conv2)
+    mel_net = tf.nn.selu(conv2)
     mel_content_features = mel_net.eval(feed_dict={x: a_content_tf})
  
     mel_style_features = mel_net.eval(feed_dict={x: a_style_tf})
@@ -255,26 +257,26 @@ with tf.Graph().as_default():
     dilated_conv1 = tf.nn.atrous_conv2d(first_res_shortcut, kernel_tf_dil1, DILATION_RATE, padding="SAME", name="dilated_conv1")
     activated_dil1 = tf.nn.selu(dilated_conv1)
     add_residual = tf.add(first_res_shortcut, activated_dil1)
-    std_conv1 = tf.nn.conv2d(
+    conv1 = tf.nn.conv2d(
         add_residual,
         kernel_tf_conv1,
         strides=[1, 1, 1, 1],
         padding="VALID",
-        name="std_conv1")
+        name="conv1")
 
     # Second residual block for mel net
-    second_res_shortcut = tf.nn.selu(std_conv1) 
+    second_res_shortcut = tf.nn.selu(conv1) 
     dilated_conv2 = tf.nn.atrous_conv2d(second_res_shortcut, kernel_tf_dil2, DILATION_RATE, padding="SAME", name="dilated_conv2")
     activated_dil2 = tf.nn.selu(dilated_conv2)
     add_residual2 = tf.add(second_res_shortcut, activated_dil2)
-    std_conv2 = tf.nn.conv2d(
+    conv2 = tf.nn.conv2d(
         add_residual2,
         kernel_tf_conv2,
         strides=[1, 1, 1, 1],
         padding="VALID",
-        name="std_conv2")
+        name="conv2")
 
-    mel_net = tf.nn.selu(std_conv2)
+    mel_net = tf.nn.selu(conv2)
 
     content_loss = ALPHA * 2 * tf.nn.l2_loss(
             net - content_features)
