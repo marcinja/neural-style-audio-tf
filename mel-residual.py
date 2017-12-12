@@ -201,7 +201,10 @@ with g.as_default(), g.device('/cpu:0'), tf.Session() as sess:
 from sys import stderr
 
 ALPHA= 1e-2
-BETA= 1
+BETA= 1e-2
+GAMMA = 1
+DELTA = 2
+
 learning_rate= 1e-3
 iterations = 100
 
@@ -292,12 +295,12 @@ with tf.Graph().as_default():
     size = height * width * number
     feats = tf.reshape(net, (-1, number))
     gram = tf.matmul(tf.transpose(feats), feats)  / N_SAMPLES
-    style_loss = 2 * tf.nn.l2_loss(gram - style_gram)
+    style_loss = 2 * GAMMA * tf.nn.l2_loss(gram - style_gram)
 
     size_mel = height_mel * width_mel * number_mel
     feats_mel = tf.reshape(mel_net, (-1, number_mel))
     gram_mel = tf.matmul(tf.transpose(feats_mel), feats_mel)  / N_SAMPLES_MEL
-    style_loss_mel = 2 * tf.nn.l2_loss(gram_mel - mel_style_gram)
+    style_loss_mel = 2 * DELTA * tf.nn.l2_loss(gram_mel - mel_style_gram)
 
    # Overall loss
     loss = content_loss + mel_content_loss + style_loss + style_loss_mel
@@ -345,7 +348,7 @@ librosa.output.write_wav(OUTPUT_FILENAME, x, fs)
 
 # In[ ]:
 
-if len(sys.argv) > 2:
+if len(sys.argv) > 4:
     plt.figure(figsize=(15,5))
     plt.subplot(1,3,1)
     plt.title('Content')
