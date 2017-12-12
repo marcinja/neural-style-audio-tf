@@ -17,8 +17,9 @@ import matplotlib.pyplot as plt
 # In[4]:
 
 
-CONTENT_FILENAME = "inputs/spongebob.mp3"
-STYLE_FILENAME = "inputs/imperial.mp3"
+
+CONTENT_FILENAME = sys.argv[1]# "inputs/usa.mp3"
+STYLE_FILENAME = sys.argv[2] #"inputs/valkyries.mp3"
 
 
 # In[5]:
@@ -89,11 +90,12 @@ mel_content_tf = np.ascontiguousarray(mel_content.T[None,None,:,:])
 mel_style_tf = np.ascontiguousarray(mel_style.T[None,None,:,:])
 
 # filter shape is "[filter_height, filter_width, in_channels, out_channels]"
-std = np.sqrt(2) * np.sqrt(2.0 / ((N_CHANNELS + N_FILTERS) * 11))
+std = np.sqrt(2) * np.sqrt(2.0 / ((N_FILTERS) * FILTER_WIDTH))
 kernel = np.random.randn(1, FILTER_WIDTH, N_CHANNELS, N_FILTERS)*std
 
-std_mel = np.sqrt(2) * np.sqrt(2.0 / ((N_CHANNELS_MEL + N_FILTERS_MEL) * 11))
-kernel_mel = np.random.randn(1, MEL_FILTER_WIDTH, N_CHANNELS_MEL, N_FILTERS_MEL)*std
+std_mel = np.sqrt(1.0 / ((N_FILTERS_MEL) * MEL_FILTER_WIDTH))
+kernel_mel = np.random.randn(1, MEL_FILTER_WIDTH, N_CHANNELS_MEL, N_FILTERS_MEL)*std_mel
+
 
 
 g = tf.Graph()
@@ -273,7 +275,7 @@ librosa.output.write_wav(OUTPUT_FILENAME, x, fs)
 
 # In[ ]:
 
-if len(sys.argv) > 2:
+if len(sys.argv) > 4:
     plt.figure(figsize=(15,5))
     plt.subplot(1,3,1)
     plt.title('Content')
