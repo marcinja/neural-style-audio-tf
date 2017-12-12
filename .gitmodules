@@ -1,0 +1,6 @@
+[submodule "vgg/tensorflow-style-transfer"]
+	path = vgg/tensorflow-style-transfer
+	url = https://github.com/hwalsuklee/tensorflow-style-transfer
+[submodule "tensorflow-style-transfer"]
+	path = tensorflow-style-transfer
+	url = https://github.com/hwalsuklee/tensorflow-style-transfer
