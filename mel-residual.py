@@ -10,7 +10,7 @@ import os
 from IPython.display import Audio, display
 import numpy as np
 import matplotlib.pyplot as plt
-
+import sys
 
 # ### Load style and content
 
@@ -197,7 +197,6 @@ with g.as_default(), g.device('/cpu:0'), tf.Session() as sess:
 
 
 from sys import stderr
-import sys
 
 ALPHA= 1e-2
 BETA= 1e-2
