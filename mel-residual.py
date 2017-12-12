@@ -192,7 +192,6 @@ with g.as_default(), g.device('/cpu:0'), tf.Session() as sess:
     mel_features = np.squeeze(mel_style_features) #np.reshape(mel_style_features, (-1, N_FILTERS_MEL))
     mel_style_gram = np.matmul(mel_features.T, mel_features) / N_SAMPLES_MEL
 
-    print 1/0
 
 # ### Optimize
 
@@ -202,7 +201,7 @@ with g.as_default(), g.device('/cpu:0'), tf.Session() as sess:
 from sys import stderr
 
 ALPHA= 1e-2
-BETA= 1e-2
+BETA= 1
 learning_rate= 1e-3
 iterations = 100
 
