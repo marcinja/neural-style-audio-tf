@@ -91,26 +91,26 @@ mel_style_tf = np.ascontiguousarray(mel_style.T[None,None,:,:])
 
 # Set up filter dimensions:
 # filter shape is "[filter_height, filter_width, in_channels, out_channels]"
-std = np.sqrt(2) * np.sqrt(2.0 / ((N_CHANNELS + N_FILTERS) * FILTER_WIDTH))
+#std = np.sqrt(2) * np.sqrt(2.0 / ((N_CHANNELS + N_FILTERS) * FILTER_WIDTH))
+std = np.sqrt(2) * np.sqrt(2.0 / ((N_FILTERS) * FILTER_WIDTH))
 kernel = np.random.randn(1, FILTER_WIDTH, N_CHANNELS, N_FILTERS)*std
 
-std_mel = np.sqrt(2) * np.sqrt(2.0 / ((N_CHANNELS_MEL + N_FILTERS_MEL) * MEL_FILTER_WIDTH))
+std_mel = np.sqrt(1.0 / ((N_FILTERS_MEL) * MEL_FILTER_WIDTH))
 kernel_mel = np.random.randn(1, MEL_FILTER_WIDTH, N_CHANNELS_MEL, N_FILTERS_MEL)*std_mel
 
 
-std_conv1 = np.sqrt(2) * np.sqrt(2.0 / ((N_FILTERS_MEL + 381)))
+std_conv1 = np.sqrt(1.0 / ((N_FILTERS_MEL)))
 kernel_mel_conv1 = np.random.randn(1, 1, N_FILTERS_MEL, 381)*std_conv1
 
-std_conv2 = np.sqrt(2) * np.sqrt(2.0 / ((381 + 381)))
+std_conv2 = np.sqrt(1.0 / ((381)))
 kernel_mel_conv2 = np.random.randn(1, 1, 381, 381)*std_conv2
 
 # Filters for dilated convolution taken to be smaller.
-#std_dil1 = np.sqrt(2) * np.sqrt(2.0 / ((N_CHANNELS_MEL + N_FILTERS_MEL) * MEL_FILTER_WIDTH/2))
-std_dil1 = np.sqrt(2) * np.sqrt(2.0 / ((N_CHANNELS_MEL + N_CHANNELS) * MEL_RES_WIDTH))
+std_dil1 = np.sqrt(1.0 / ((N_FILTERS_MEL) * MEL_RES_WIDTH))
 kernel_mel_dil1 = np.random.randn(1, MEL_RES_WIDTH, N_FILTERS_MEL, N_FILTERS_MEL)*std_dil1
 
-std_dil2 = np.sqrt(2) * np.sqrt(2.0 / ((381 + 381) * MEL_RES_WIDTH))
-kernel_mel_dil2 = np.random.randn(1, MEL_FILTER_WIDTH / 2, 381, 381)*std_dil2
+std_dil2 = np.sqrt(1.0 / ((381) * MEL_RES_WIDTH))
+kernel_mel_dil2 = np.random.randn(1, MEL_RES_WIDTH, 381, 381)*std_dil2
 
 g = tf.Graph()
 with g.as_default(), g.device('/cpu:0'), tf.Session() as sess:
@@ -192,6 +192,7 @@ with g.as_default(), g.device('/cpu:0'), tf.Session() as sess:
     mel_features = np.squeeze(mel_style_features) #np.reshape(mel_style_features, (-1, N_FILTERS_MEL))
     mel_style_gram = np.matmul(mel_features.T, mel_features) / N_SAMPLES_MEL
 
+    print 1/0
 
 # ### Optimize
 
