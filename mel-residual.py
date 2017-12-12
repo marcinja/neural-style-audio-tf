@@ -90,25 +90,25 @@ mel_style_tf = np.ascontiguousarray(mel_style.T[None,None,:,:])
 
 # Set up filter dimensions:
 # filter shape is "[filter_height, filter_width, in_channels, out_channels]"
-std = np.sqrt(2) * np.sqrt(2.0 / ((N_CHANNELS + N_FILTERS) * 11))
+std = 1#np.sqrt(2) * np.sqrt(2.0 / ((N_CHANNELS + N_FILTERS) * 11))
 kernel = np.random.randn(1, FILTER_WIDTH, N_CHANNELS, N_FILTERS)*std
 
-std_mel = np.sqrt(2) * np.sqrt(2.0 / ((N_CHANNELS_MEL + (N_FILTERS_MEL/2) * 50)))
-kernel_mel = np.random.randn(1, MEL_FILTER_WIDTH, N_CHANNELS_MEL, N_FILTERS_MEL)*std_mel
+std_mel = np.sqrt(2) * np.sqrt(2.0 / ((N_CHANNELS_MEL + (N_FILTERS_MEL) * 50)))
+kernel_mel = np.random.randn(1, MEL_FILTER_WIDTH, N_CHANNELS_MEL, N_FILTERS_MEL)*std
 
 
 std_conv1 = np.sqrt(2) * np.sqrt(2.0 / ((N_FILTERS_MEL + 381)))
-kernel_mel_conv1 = np.random.randn(1, 1, N_FILTERS_MEL, 381)*std_conv1
+kernel_mel_conv1 = np.random.randn(1, 1, N_FILTERS_MEL, 381)*std
 
 std_conv2 = np.sqrt(2) * np.sqrt(2.0 / ((381 + 381)))
-kernel_mel_conv2 = np.random.randn(1, 1, 381, 381)*std_conv2
+kernel_mel_conv2 = np.random.randn(1, 1, 381, 381)*std
 
 # Filters for dilated convolution taken to be smaller.
 std_dil1 = np.sqrt(2) * np.sqrt(2.0 / ((N_CHANNELS_MEL + N_FILTERS_MEL) * MEL_FILTER_WIDTH/2))
-kernel_mel_dil1 = np.random.randn(1, MEL_FILTER_WIDTH / 2, N_FILTERS_MEL, N_FILTERS_MEL)*std_dil1
+kernel_mel_dil1 = np.random.randn(1, MEL_FILTER_WIDTH / 2, N_FILTERS_MEL, N_FILTERS_MEL)*std
 
 std_dil2 = np.sqrt(2) * np.sqrt(2.0 / ((381 + 381) * MEL_FILTER_WIDTH/2))
-kernel_mel_dil2 = np.random.randn(1, MEL_FILTER_WIDTH / 2, 381, 381)*std_dil2
+kernel_mel_dil2 = np.random.randn(1, MEL_FILTER_WIDTH / 2, 381, 381)*std
 
 g = tf.Graph()
 with g.as_default(), g.device('/cpu:0'), tf.Session() as sess:
