@@ -1,4 +1,16 @@
-# Audio Style Transfer
+# Audio Style Transfer Using Neural Methods
+
+This repo is a fork of a repo, with the original README down below.
+
+mel.py contains a network with a parallel single convolutional-layer Mel network.
+
+mel-residual.py contains a network with the expanded Mel network containing a single convolutional layer followed by two dilated residual blocks.
+
+The outputs folder contains various files created during the process of using this code and also from using other networks (e.g. VGG).
+
+
+
+## (ORIGINAL README) Audio Style Transfer
 
 This is a TensorFlow reimplementation of [Vadim's Lasagne code](https://github.com/vadim-v-lebedev/audio_style_tranfer) for style transfer algorithm for audio, which uses convolutions with random weights to represent audio features.
 
